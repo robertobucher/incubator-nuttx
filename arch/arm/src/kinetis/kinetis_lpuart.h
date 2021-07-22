@@ -1,5 +1,5 @@
 /****************************************************************************
- * boards/arm/lpc17xx_40xx/zkit-arm-1769/src/lpc17_40_adc.c
+ * arch/arm/src/kinetis/kinetis_lpuart.h
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -18,87 +18,84 @@
  *
  ****************************************************************************/
 
+#ifndef __ARCH_ARM_SRC_KINETIS_KINETIS_LPUART_H
+#define __ARCH_ARM_SRC_KINETIS_KINETIS_LPUART_H
+
+#if defined(HAVE_UART_DEVICE) && defined(USE_SERIALDRIVER)
+
 /****************************************************************************
  * Included Files
  ****************************************************************************/
-
-#include <nuttx/config.h>
-
-#include <errno.h>
-#include <debug.h>
-
-#include <nuttx/board.h>
-#include <nuttx/analog/adc.h>
-#include <arch/board/board.h>
-
-#include "chip.h"
-#include "arm_arch.h"
-
-#include "lpc17_40_adc.h"
-#include "zkit-arm-1769.h"
-
-#ifdef CONFIG_ADC
 
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
 
+/* Is DMA available on any (enabled) LPUART? */
+
+#undef LPSERIAL_HAVE_DMA
+#if defined(CONFIG_KINETIS_LPUART0_RXDMA) || defined(CONFIG_KINETIS_LPUART1_RXDMA) || \
+    defined(CONFIG_KINETIS_LPUART2_RXDMA) || defined(CONFIG_KINETIS_LPUART3_RXDMA) || \
+    defined(CONFIG_KINETIS_LPUART4_RXDMA)
+#  define LPSERIAL_HAVE_DMA 1
+
+/* Is DMA available on All (enabled) LPUART? */
+
+#define LPSERIAL_HAVE_ALL_DMA 1
+#  if (defined(CONFIG_KINETIS_LPUART0) && !defined(CONFIG_KINETIS_LPUART0_RXDMA)) || \
+      (defined(CONFIG_KINETIS_LPUART1) && !defined(CONFIG_KINETIS_LPUART1_RXDMA)) || \
+      (defined(CONFIG_KINETIS_LPUART2) && !defined(CONFIG_KINETIS_LPUART2_RXDMA)) || \
+      (defined(CONFIG_KINETIS_LPUART3) && !defined(CONFIG_KINETIS_LPUART3_RXDMA)) || \
+      (defined(CONFIG_KINETIS_LPUART4) && !defined(CONFIG_KINETIS_LPUART4_RXDMA))
+#    undef LPSERIAL_HAVE_ALL_DMA
+#  endif
+#endif
+
 /****************************************************************************
- * Private Data
+ * Public Types
  ****************************************************************************/
 
 /****************************************************************************
- * Private Functions
+ * Public Data
+ ****************************************************************************/
+
+#ifndef __ASSEMBLY__
+
+#undef EXTERN
+#if defined(__cplusplus)
+#define EXTERN extern "C"
+extern "C"
+{
+#else
+#define EXTERN extern
+#endif
+
+/****************************************************************************
+ * Public Functions Prototypes
  ****************************************************************************/
 
 /****************************************************************************
- * Public Functions
- ****************************************************************************/
-
-/****************************************************************************
- * Name: zkit_adc_setup
+ * Name: kinetis_serial_dma_poll
  *
  * Description:
- *   Initialize ADC and register the ADC driver.
+ *   Must be called periodically if any Kinetis LPUART is configured for DMA.
+ *   The DMA callback is triggered for each fifo size/2 bytes, but this can
+ *   result in some bytes being transferred but not collected if the incoming
+ *   data is not a whole multiple of half the FIFO size.
+ *
+ *   May be safely called from either interrupt or thread context.
  *
  ****************************************************************************/
 
-int zkit_adc_setup(void)
-{
-  static bool initialized = false;
-  struct adc_dev_s *adc;
-  int ret;
+#ifdef LPSERIAL_HAVE_DMA
+void kinetis_lpserial_dma_poll(void);
+#endif
 
-  /* Check if we have already initialized */
-
-  if (!initialized)
-    {
-      /* Call lpc17_40_adcinitialize() to get an instance of
-       * the ADC interface
-       */
-
-      adc = lpc17_40_adcinitialize();
-      if (adc == NULL)
-        {
-          aerr("ERROR: ERROR: Failed to get ADC interface\n");
-          return -ENODEV;
-        }
-
-      /* Register the ADC driver at "/dev/adc0" */
-
-      ret = adc_register("/dev/adc0", adc);
-      if (ret < 0)
-        {
-          aerr("ERROR: adc_register failed: %d\n", ret);
-          return ret;
-        }
-
-      /* Now we are initialized */
-
-      initialized = true;
-    }
-
-  return OK;
+#undef EXTERN
+#if defined(__cplusplus)
 }
+#endif
 
-#endif /* CONFIG_ADC */
+#endif /* __ASSEMBLY__ */
+#endif /* HAVE_UART_DEVICE && USE_SERIALDRIVER) */
+#endif /* __ARCH_ARM_SRC_KINETIS_KINETIS_UART_H */

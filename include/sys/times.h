@@ -1,5 +1,5 @@
 /****************************************************************************
- * boards/arm/lpc17xx_40xx/u-blox-c027/src/lpc17_40_adc.c
+ * include/sys/times.h
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -18,75 +18,64 @@
  *
  ****************************************************************************/
 
+#ifndef __INCLUDE_SYS_TIMES_H
+#define __INCLUDE_SYS_TIMES_H
+
 /****************************************************************************
  * Included Files
  ****************************************************************************/
 
-#include <nuttx/config.h>
-
-#include <errno.h>
-#include <debug.h>
-
-#include <nuttx/board.h>
-#include <nuttx/analog/adc.h>
-#include <arch/board/board.h>
-
-#include "chip.h"
-#include "arm_arch.h"
-
-#include "lpc17_40_adc.h"
-#include "u-blox-c027.h"
-
-#ifdef CONFIG_ADC
+#include <sys/types.h>
 
 /****************************************************************************
- * Public Functions
+ * Public Type Definitions
+ ****************************************************************************/
+
+/* Structure describing CPU time used by a process and its children.  */
+
+struct tms
+{
+  clock_t tms_utime;  /* User CPU time.  */
+  clock_t tms_stime;  /* System CPU time.  */
+  clock_t tms_cutime; /* User CPU time of dead children.  */
+  clock_t tms_cstime; /* System CPU time of dead children.  */
+};
+
+#undef EXTERN
+#if defined(__cplusplus)
+#define EXTERN extern "C"
+extern "C"
+{
+#else
+#define EXTERN extern
+#endif
+
+/****************************************************************************
+ * Public Function Prototypes
  ****************************************************************************/
 
 /****************************************************************************
- * Name: lpc17_40_adc_setup
+ * Name: times
  *
  * Description:
- *   Initialize ADC and register the ADC driver.
+ *   The times() function shall fill the tms structure pointed to by buffer
+ *   with time-accounting information.
+ *
+ * Returned Value:
+ *   Upon successful completion, times() shall return the elapsed real time,
+ *   in clock ticks, since an arbitrary point in the past (for example,
+ *   system start-up time). This point does not change from one invocation
+ *   of times() within the process to another. The return value may overflow
+ *   the possible range of type clock_t. If times() fails, (clock_t)-1 shall
+ *   be returned and errno set to indicate the error.
  *
  ****************************************************************************/
 
-int lpc17_40_adc_setup(void)
-{
-  static bool initialized = false;
-  struct adc_dev_s *adc;
-  int ret;
+clock_t times(FAR struct tms *buffer);
 
-  /* Check if we have already initialized */
-
-  if (!initialized)
-    {
-      /* Call lpc17_40_adcinitialize() to get an instance of
-       * the ADC interface
-       */
-
-      adc = lpc17_40_adcinitialize();
-      if (adc == NULL)
-        {
-          aerr("ERROR: Failed to get ADC interface\n");
-          return -ENODEV;
-        }
-
-      /* Register the ADC driver at "/dev/adc0" */
-
-      ret = adc_register("/dev/adc0", adc);
-      if (ret < 0)
-        {
-          aerr("ERROR: adc_register failed: %d\n", ret);
-          return ret;
-        }
-
-      /* Now we are initialized */
-
-      initialized = true;
-    }
-
-  return OK;
+#undef EXTERN
+#if defined(__cplusplus)
 }
+#endif
 
-#endif /* CONFIG_ADC */
+#endif /* __INCLUDE_SYS_TIMES_H */

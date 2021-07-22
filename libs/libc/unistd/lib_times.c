@@ -1,5 +1,5 @@
 /****************************************************************************
- * boards/arm/lpc17xx_40xx/u-blox-c027/src/lpc17_40_adc.c
+ * libs/libc/unistd/lib_times.c
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -22,71 +22,40 @@
  * Included Files
  ****************************************************************************/
 
-#include <nuttx/config.h>
-
 #include <errno.h>
-#include <debug.h>
-
-#include <nuttx/board.h>
-#include <nuttx/analog/adc.h>
-#include <arch/board/board.h>
-
-#include "chip.h"
-#include "arm_arch.h"
-
-#include "lpc17_40_adc.h"
-#include "u-blox-c027.h"
-
-#ifdef CONFIG_ADC
+#include <string.h>
+#include <sys/times.h>
+#include <time.h>
 
 /****************************************************************************
  * Public Functions
  ****************************************************************************/
 
 /****************************************************************************
- * Name: lpc17_40_adc_setup
+ * Name: times
  *
  * Description:
- *   Initialize ADC and register the ADC driver.
+ *   The times() function shall fill the tms structure pointed to by buffer
+ *   with time-accounting information.
+ *
+ * Returned Value:
+ *   Upon successful completion, times() shall return the elapsed real time,
+ *   in clock ticks, since an arbitrary point in the past (for example,
+ *   system start-up time). This point does not change from one invocation
+ *   of times() within the process to another. The return value may overflow
+ *   the possible range of type clock_t. If times() fails, (clock_t)-1 shall
+ *   be returned and errno set to indicate the error.
  *
  ****************************************************************************/
 
-int lpc17_40_adc_setup(void)
+clock_t times(FAR struct tms *buffer)
 {
-  static bool initialized = false;
-  struct adc_dev_s *adc;
-  int ret;
-
-  /* Check if we have already initialized */
-
-  if (!initialized)
+  if (buffer == NULL)
     {
-      /* Call lpc17_40_adcinitialize() to get an instance of
-       * the ADC interface
-       */
-
-      adc = lpc17_40_adcinitialize();
-      if (adc == NULL)
-        {
-          aerr("ERROR: Failed to get ADC interface\n");
-          return -ENODEV;
-        }
-
-      /* Register the ADC driver at "/dev/adc0" */
-
-      ret = adc_register("/dev/adc0", adc);
-      if (ret < 0)
-        {
-          aerr("ERROR: adc_register failed: %d\n", ret);
-          return ret;
-        }
-
-      /* Now we are initialized */
-
-      initialized = true;
+      set_errno(EINVAL);
+      return -1;
     }
 
-  return OK;
+  memset(buffer, 0, sizeof(*buffer));
+  return clock();
 }
-
-#endif /* CONFIG_ADC */
