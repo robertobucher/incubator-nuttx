@@ -1,5 +1,5 @@
 /****************************************************************************
- * libs/libc/unistd/lib_futimens.c
+ * arch/xtensa/src/esp32s2/esp32s2_wdt.c
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -22,36 +22,29 @@
  * Included Files
  ****************************************************************************/
 
-#include <nuttx/config.h>
+#include "xtensa.h"
+#include "hardware/esp32s2_rtccntl.h"
 
-#include <sys/stat.h>
-#include <errno.h>
+#include "esp32s2_wdt.h"
 
 /****************************************************************************
  * Public Functions
  ****************************************************************************/
 
 /****************************************************************************
- * Name: futimens
+ * Name: esp32s2_wdt_early_deinit
  *
  * Description:
- *   futimens() update the timestamps of a file with nanosecond precision.
- *   This contrasts with the historical utime(2) and utimes(2), which permit
- *   only second and microsecond precision, respectively, when setting file
- *   timestamps.
- *
- * Input Parameters:
- *   fd  - Specifies the fd to be modified
- *   times - Specifies the time value to set
- *
- * Returned Value:
- *   On success, futimens() return 0.
- *   On error, -1 is returned and errno is set to indicate the error.
+ *   Disable the WDT(s) that was/were enabled by the bootloader.
  *
  ****************************************************************************/
 
-int futimens(int fd, const struct timespec times[2])
+void esp32s2_wdt_early_deinit(void)
 {
-  set_errno(ENOTSUP);
-  return ERROR;
+  uint32_t regval;
+  putreg32(RTC_CNTL_WDT_WKEY_VALUE, RTC_CNTL_WDTWPROTECT_REG);
+  regval  = getreg32(RTC_CNTL_WDTCONFIG0_REG);
+  regval &= ~RTC_CNTL_WDT_EN;
+  putreg32(regval, RTC_CNTL_WDTCONFIG0_REG);
+  putreg32(0, RTC_CNTL_WDTWPROTECT_REG);
 }

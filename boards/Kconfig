@@ -3261,7 +3261,7 @@ endif
 comment "Board-Common Options"
 
 if ARCH_CHIP_STM32
-source boards/arm/stm32/common/Kconfig
+source "boards/arm/stm32/common/Kconfig"
 endif
 
 config BOARD_CRASHDUMP
@@ -3388,6 +3388,27 @@ config BOARDCTL_UNIQUEKEY_SIZE
 	---help---
 		Provides the size of the memory buffer that must be provided by the
 		caller of board_uniquekey() in which to receive the board unique KEY.
+
+config BOARDCTL_SWITCH_BOOT
+	bool "Enable switch boot system support"
+	default n
+	---help---
+		BOARDIOC_SWITCH_BOOT is required to communicate the boot partition
+		from userspace (OTA subsystem) to board for A/B boot or single boot
+		case. It can be used to change the system boot behavior. For instance,
+		once a firmware updated successfully, this boardctl can be used to
+		modify FLASH bank selection.
+
+config BOARDCTL_BOOT_IMAGE
+	bool "Boot a new application firmware image"
+	default n
+	---help---
+		Boot a new application firmware image.
+		Architecture-specific logic must provide the board_boot_image()
+		interface for executing the required actions for booting a new
+		application firmware image (e.g. deinitialize peripherals, load the
+		Program Counter register with the application firmware image entry
+		point address).
 
 config BOARDCTL_MKRD
 	bool "Enable application space creation of RAM disks"
