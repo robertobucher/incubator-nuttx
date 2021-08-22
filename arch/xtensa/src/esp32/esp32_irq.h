@@ -1,5 +1,5 @@
 /****************************************************************************
- * arch/arm/src/armv8-m/arm_switchcontext.S
+ * arch/xtensa/src/esp32/esp32_irq.h
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -18,64 +18,68 @@
  *
  ****************************************************************************/
 
+#ifndef __ARCH_XTENSA_SRC_ESP32_ESP32_IRQ_H
+#define __ARCH_XTENSA_SRC_ESP32_ESP32_IRQ_H
+
 /****************************************************************************
  * Included Files
  ****************************************************************************/
 
 #include <nuttx/config.h>
-#include <arch/irq.h>
 
-#include "nvic.h"
-#include "svcall.h"
+#ifndef __ASSEMBLY__
+
+#undef EXTERN
+#if defined(__cplusplus)
+#define EXTERN extern "C"
+extern "C"
+{
+#else
+#define EXTERN extern
+#endif
 
 /****************************************************************************
- * Pre-processor Definitions
+ * Public Functions Prototypes
  ****************************************************************************/
 
 /****************************************************************************
- * Public Symbols
- ****************************************************************************/
-
-	.syntax	unified
-	.thumb
-	.file	"arm_switchcontext.S"
-
-/****************************************************************************
- * Macros
- ****************************************************************************/
-
-/****************************************************************************
- * Public Functions
- ****************************************************************************/
-
-/****************************************************************************
- * Name: arm_switchcontext
+ * Name:  esp32_mapirq
  *
  * Description:
- *   Save the current thread context and restore the specified context.
- *   Full prototype is:
+ *   Map the given IRQ to the CPU and allocated CPU interrupt.
  *
- *   void arm_switchcontext(uint32_t *saveregs, uint32_t *restoreregs);
+ * Input Parameters:
+ *   irq      - IRQ number (see esp32/include/irq.h)
+ *   cpu      - The CPU receiving the interrupt 0=PRO CPU 1=APP CPU
+ *   cpuint   - The allocated CPU interrupt.
  *
  * Returned Value:
  *   None
  *
  ****************************************************************************/
 
-	.thumb_func
-	.globl	arm_switchcontext
-	.type	arm_switchcontext, function
-arm_switchcontext:
+void esp32_mapirq(int irq, int cpu, int cpuint);
 
-	/* Perform the System call with R0=1, R1=saveregs, R2=restoreregs */
+/****************************************************************************
+ * Name:  esp32_unmapirq
+ *
+ * Description:
+ *   Unmap the given IRQ.
+ *
+ * Input Parameters:
+ *   irq      - IRQ number (see esp32/include/irq.h)
+ *
+ * Returned Value:
+ *   None
+ *
+ ****************************************************************************/
 
-	mov		r2, r1					/* R2: restoreregs */
-	mov		r1, r0					/* R1: saveregs */
-	mov		r0, #SYS_switch_context			/* R0: context switch */
-	svc		#SYS_syscall				/* Force synchronous SVCall (or Hard Fault) */
+void esp32_unmapirq(int irq);
 
-	/* We will get here only after the rerturn from the context switch */
+#undef EXTERN
+#if defined(__cplusplus)
+}
+#endif
 
-	bx		lr
-	.size	arm_switchcontext, .-arm_switchcontext
-	.end
+#endif /* __ASSEMBLY__ */
+#endif /* __ARCH_XTENSA_SRC_ESP32_ESP32_IRQ_H */

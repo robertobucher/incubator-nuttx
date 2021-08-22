@@ -1,5 +1,5 @@
 /****************************************************************************
- * arch/arm/src/armv7-m/iar/arm_switchcontext.S
+ * sched/sched/sched_backtrace.c
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -23,59 +23,35 @@
  ****************************************************************************/
 
 #include <nuttx/config.h>
-#include <arch/irq.h>
 
-#include "nvic.h"
-#include "svcall.h"
-
-	MODULE arm_switchcontext
-	SECTION .text:CODE:NOROOT(2)
-
-/****************************************************************************
- * Pre-processor Definitions
- ****************************************************************************/
-
-/****************************************************************************
- * Public Symbols
- ****************************************************************************/
-
-	PUBLIC arm_switchcontext
-
-/****************************************************************************
- * Macros
- ****************************************************************************/
+#include "sched.h"
 
 /****************************************************************************
  * Public Functions
  ****************************************************************************/
 
 /****************************************************************************
- * Name: arm_switchcontext
+ * Name: sched_backtrace
  *
  * Description:
- *   Save the current thread context and restore the specified context.
- *   Full prototype is:
- *
- *   void arm_switchcontext(uint32_t *saveregs, uint32_t *restoreregs);
- *
- * Returned Value:
- *   None
+ *  Get thread backtrace from specified tid.
+ *  Store up to SIZE return address of the current program state in
+ *  ARRAY and return the exact number of values stored.
  *
  ****************************************************************************/
 
-	THUMB
+int sched_backtrace(pid_t tid, FAR void **buffer, int size)
+{
+  FAR struct tcb_s *rtcb = NULL;
 
-arm_switchcontext:
+  if (tid >= 0)
+    {
+      rtcb = nxsched_get_tcb(tid);
+      if (rtcb == NULL)
+        {
+          return 0;
+        }
+    }
 
-	/* Perform the System call with R0=1, R1=saveregs, R2=restoreregs */
-
-	mov		r2, r1					/* R2: restoreregs */
-	mov		r1, r0					/* R1: saveregs */
-	mov		r0, #SYS_switch_context			/* R0: context switch */
-	svc		#SYS_syscall				/* Force synchronous SVCall (or Hard Fault) */
-
-	/* We will get here only after the rerturn from the context switch */
-
-	bx		lr
-
-	END
+  return up_backtrace(rtcb, buffer, size);
+}

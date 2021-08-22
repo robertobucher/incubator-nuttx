@@ -34,11 +34,13 @@
 #include <nuttx/irq.h>
 #include <arch/irq.h>
 
-#include "hardware/esp32_dport.h"
-#include "esp32_cpuint.h"
 #include "xtensa.h"
 
-#include "sched/sched.h"
+#include "hardware/esp32_dport.h"
+
+#include "esp32_irq.h"
+
+#include "esp32_cpuint.h"
 
 /****************************************************************************
  * Pre-processor Definitions
@@ -152,19 +154,19 @@ uint8_t g_cpu0_intmap[ESP32_NCPUINTS];
 uint8_t g_cpu1_intmap[ESP32_NCPUINTS];
 #endif
 
-/****************************************************************************
- * Private Data
- ****************************************************************************/
-
 /* g_intenable[] is a shadow copy of the per-CPU INTENABLE register
  * content.
  */
 
 #ifdef CONFIG_SMP
-static uint32_t g_intenable[CONFIG_SMP_NCPUS];
+uint32_t g_intenable[CONFIG_SMP_NCPUS];
 #else
-static uint32_t g_intenable[1];
+uint32_t g_intenable[1];
 #endif
+
+/****************************************************************************
+ * Private Data
+ ****************************************************************************/
 
 /* Bitsets for free, unallocated CPU interrupts available to peripheral
  * devices.
@@ -219,7 +221,7 @@ static inline void xtensa_disable_all(void)
  *             be allocated from free interrupts within this set
  *
  * Returned Value:
- *   On success, the allocated level-sensitive, CPU interrupt numbr is
+ *   On success, the allocated level-sensitive, CPU interrupt number is
  *   returned.  A negated errno is returned on failure.  The only possible
  *   failure is that all level-sensitive CPU interrupts have already been
  *   allocated.
@@ -234,6 +236,7 @@ static int esp32_alloc_cpuint(uint32_t intmask)
   uint32_t intset;
   int cpuint;
   int ret = -ENOMEM;
+  int cpu = 0;
 
   /* Check if there are CPU interrupts with the requested properties
    * available.
@@ -241,8 +244,9 @@ static int esp32_alloc_cpuint(uint32_t intmask)
 
   flags = enter_critical_section();
 
+  cpu = up_cpu_index();
 #ifdef CONFIG_SMP
-  if (this_cpu() != 0)
+  if (cpu != 0)
     {
       freeints = &g_cpu1_freeints;
     }
@@ -283,6 +287,13 @@ static int esp32_alloc_cpuint(uint32_t intmask)
               break;
             }
         }
+    }
+
+  /* Make sure the CPU interrupt is disabled. */
+
+  if (ret >= 0)
+    {
+      xtensa_disable_cpuint(&g_intenable[cpu], (1ul << ret));
     }
 
   leave_critical_section(flags);
@@ -390,40 +401,6 @@ int esp32_cpuint_initialize(void)
 }
 
 /****************************************************************************
- * Name: up_disable_irq
- *
- * Description:
- *   Disable the CPU interrupt specified by 'cpuint'
- *
- ****************************************************************************/
-
-void up_disable_irq(int cpuint)
-{
-  int cpu = up_cpu_index();
-
-  DEBUGASSERT(cpuint >= 0 && cpuint <= ESP32_CPUINT_MAX);
-
-  xtensa_disable_cpuint(&g_intenable[cpu], (1ul << cpuint));
-}
-
-/****************************************************************************
- * Name: up_enable_irq
- *
- * Description:
- *   Enable the CPU interrupt specified by 'cpuint'
- *
- ****************************************************************************/
-
-void up_enable_irq(int cpuint)
-{
-  int cpu = up_cpu_index();
-
-  DEBUGASSERT(cpuint >= 0 && cpuint <= ESP32_CPUINT_MAX);
-
-  xtensa_enable_cpuint(&g_intenable[cpu], (1ul << cpuint));
-}
-
-/****************************************************************************
  * Name:  esp32_alloc_levelint
  *
  * Description:
@@ -515,7 +492,7 @@ void esp32_free_cpuint(int cpuint)
   flags = enter_critical_section();
 
 #ifdef CONFIG_SMP
-  if (this_cpu() != 0)
+  if (up_cpu_index() != 0)
     {
       freeints = &g_cpu1_freeints;
     }
@@ -552,6 +529,9 @@ void esp32_attach_peripheral(int cpu, int periphid, int cpuint)
 {
   uintptr_t regaddr;
   uint8_t *intmap;
+  int irq;
+
+  irq = ESP32_PERIPH2IRQ(periphid);
 
   DEBUGASSERT(periphid >= 0 && periphid < ESP32_NPERIPHERALS);
   DEBUGASSERT(cpuint >= 0 && cpuint <= ESP32_CPUINT_MAX);
@@ -572,6 +552,7 @@ void esp32_attach_peripheral(int cpu, int periphid, int cpuint)
 
   DEBUGASSERT(intmap[cpuint] == CPUINT_UNASSIGNED);
   intmap[cpuint] = periphid + XTENSA_IRQ_FIRSTPERIPH;
+  esp32_mapirq(irq, cpu, cpuint);
 
   putreg32(cpuint, regaddr);
 }
@@ -598,6 +579,9 @@ void esp32_detach_peripheral(int cpu, int periphid, int cpuint)
 {
   uintptr_t regaddr;
   uint8_t *intmap;
+  int irq;
+
+  irq = ESP32_PERIPH2IRQ(periphid);
 
   DEBUGASSERT(periphid >= 0 && periphid < ESP32_NPERIPHERALS);
 #ifdef CONFIG_SMP
@@ -617,6 +601,7 @@ void esp32_detach_peripheral(int cpu, int periphid, int cpuint)
 
   DEBUGASSERT(intmap[cpuint] != CPUINT_UNASSIGNED);
   intmap[cpuint] = CPUINT_UNASSIGNED;
+  esp32_unmapirq(irq);
 
   putreg32(NO_CPUINT, regaddr);
 }

@@ -726,7 +726,7 @@ static int esp32_wdt_setisr(FAR struct esp32_wdt_dev_s *dev, xcpt_t handler,
            * CPU Interrupt
            */
 
-          up_disable_irq(wdt->cpuint);
+          up_disable_irq(wdt->irq);
           esp32_detach_peripheral(wdt->cpu, wdt->periph, wdt->cpuint);
           esp32_free_cpuint(wdt->cpuint);
           irq_detach(wdt->irq);
@@ -752,10 +752,6 @@ static int esp32_wdt_setisr(FAR struct esp32_wdt_dev_s *dev, xcpt_t handler,
 
       wdt->cpu = up_cpu_index();
 
-      /* Disable the provided CPU Interrupt to configure it */
-
-      up_disable_irq(wdt->cpuint);
-
       /* Attach a peripheral interrupt to the available CPU interrupt in
        * the current core
        */
@@ -776,7 +772,7 @@ static int esp32_wdt_setisr(FAR struct esp32_wdt_dev_s *dev, xcpt_t handler,
 
       /* Enable the CPU Interrupt that is linked to the wdt */
 
-      up_enable_irq(wdt->cpuint);
+      up_enable_irq(wdt->irq);
     }
 
 errout:

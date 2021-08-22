@@ -1,5 +1,5 @@
 /****************************************************************************
- * libs/libc/debug/lib_dumpstack.c
+ * include/byteswap.h
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -18,51 +18,28 @@
  *
  ****************************************************************************/
 
+#ifndef __INCLUDE_BYTES_SWAP_H
+#define __INCLUDE_BYTES_SWAP_H
+
 /****************************************************************************
  * Included Files
  ****************************************************************************/
 
-#include <nuttx/config.h>
-
-#include <sys/types.h>
-
-#include <stdio.h>
-#include <syslog.h>
-#include <execinfo.h>
-
-#define DUMP_FORMAT "%*p"
-#define DUMP_WIDTH  (int)(2 * sizeof(FAR void *) + 3)
-
-#define DUMP_DEPTH  16
-#define DUMP_NITEM  8
-#define DUMP_LINESIZE (DUMP_NITEM * DUMP_WIDTH)
+#include <endian.h>
 
 /****************************************************************************
- * Public Functions
+ * Preprocessor definitions
  ****************************************************************************/
 
-void dump_stack(void)
-{
-  FAR void *address[DUMP_DEPTH];
-  char line[DUMP_LINESIZE + 1];
-  int ret = 0;
-  int size;
-  int i;
+#ifndef bswap_16
+#define bswap_16(x) __swap_uint16(x)
+#endif
 
-  size = backtrace(address, DUMP_DEPTH);
-  if (size <= 0)
-    {
-      return;
-    }
+#ifndef bswap_32
+#define bswap_32(x) __swap_uint32(x)
+#endif
 
-  for (i = 0; i < size; i++)
-    {
-      ret += snprintf(line + ret, sizeof(line) - ret,
-                      DUMP_FORMAT, DUMP_WIDTH, address[i]);
-      if (i == size - 1 || ret % DUMP_LINESIZE == 0)
-        {
-          syslog(LOG_INFO, "[CallStack %d]: %s\n", i / DUMP_NITEM, line);
-          ret = 0;
-        }
-    }
-}
+#ifndef bswap_64
+#define bswap_64(x) __swap_uint64(x)
+#endif
+#endif

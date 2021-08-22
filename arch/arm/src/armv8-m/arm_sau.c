@@ -1,5 +1,5 @@
 /****************************************************************************
- * arch/arm/src/armv6-m/arm_switchcontext.S
+ * arch/arm/src/armv8-m/arm_sau.c
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -22,60 +22,95 @@
  * Included Files
  ****************************************************************************/
 
-#include <nuttx/config.h>
-#include <arch/irq.h>
-
-#include "nvic.h"
-#include "svcall.h"
+#include "sau.h"
+#include "arm_internal.h"
 
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
 
 /****************************************************************************
- * Public Symbols
+ * Private Data
  ****************************************************************************/
 
-	.file	"arm_switchcontext.S"
+/* The next available region number */
+
+static uint8_t g_region;
 
 /****************************************************************************
- * Macros
+ * Private Functions
  ****************************************************************************/
+
+/****************************************************************************
+ * Name: sau_allocregion
+ *
+ * Description:
+ *   Allocate the next region
+ *
+ * Assumptions:
+ *   - Regions are never deallocated
+ *   - Regions are only allocated early in initialization, so no special
+ *     protection against re-entrancy is required;
+ *
+ ****************************************************************************/
+
+static unsigned int sau_allocregion(void)
+{
+  return (unsigned int)g_region++;
+}
 
 /****************************************************************************
  * Public Functions
  ****************************************************************************/
 
 /****************************************************************************
- * Name: arm_switchcontext
+ * Name: sau_control
  *
  * Description:
- *   Save the current thread context and restore the specified context.
- *   Full prototype is:
- *
- *   void arm_switchcontext(uint32_t *saveregs, uint32_t *restoreregs);
- *
- * Returned Value:
- *   None
+ *   Configure and enable (or disable) the SAU
  *
  ****************************************************************************/
 
-	.align	2
-	.code	16
-	.thumb_func
-	.globl	arm_switchcontext
-	.type	arm_switchcontext, function
-arm_switchcontext:
+void sau_control(bool enable, bool allns)
+{
+  uint32_t regval = 0;
 
-	/* Perform the System call with R0=1, R1=saveregs, R2=restoreregs */
+  if (enable)
+    {
+      regval |= SAU_CTRL_ENABLE; /* Enable the SAU */
+    }
+  else if (allns)
+    {
+      regval |= SAU_CTRL_ALLNS; /* All region non-secure */
+    }
 
-	mov		r2, r1					/* R2: restoreregs */
-	mov		r1, r0					/* R1: saveregs */
-	mov		r0, #SYS_switch_context			/* R0: context switch */
-	svc		#SYS_syscall				/* Force synchronous SVCall (or Hard Fault) */
+  putreg32(regval, SAU_CTRL);
+}
 
-	/* We will get here only after the rerturn from the context switch */
+/****************************************************************************
+ * Name: sau_configure_region
+ *
+ * Description:
+ *   Configure a region for secure attribute
+ *
+ ****************************************************************************/
 
-	bx		lr
-	.size	arm_switchcontext, .-arm_switchcontext
-	.end
+void sau_configure_region(uintptr_t base, size_t size, uint32_t flags)
+{
+  unsigned int region = sau_allocregion();
+  uintptr_t    limit;
+
+  /* Ensure the base address alignment */
+
+  limit = (base + size) & SAU_RLAR_LIMIT_MASK;
+  base &= SAU_RBAR_BASE_MASK;
+
+  /* Select the region */
+
+  putreg32(region, SAU_RNR);
+
+  /* Set the region base, limit and attribute */
+
+  putreg32(base, SAU_RBAR);
+  putreg32(limit | flags | SAU_RLAR_ENABLE, SAU_RLAR);
+}

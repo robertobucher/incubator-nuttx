@@ -1,5 +1,5 @@
 /****************************************************************************
- * arch/arm/src/armv7-m/gnu/arm_switchcontext.S
+ * boards/arm/stm32/common/include/board_hall3ph.h
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -18,64 +18,50 @@
  *
  ****************************************************************************/
 
+#ifndef __BOARD_HALL3PH_H
+#define __BOARD_HALL3PH_H
+
 /****************************************************************************
  * Included Files
  ****************************************************************************/
 
 #include <nuttx/config.h>
-#include <arch/irq.h>
-
-#include "nvic.h"
-#include "svcall.h"
 
 /****************************************************************************
- * Pre-processor Definitions
+ * Public Data
+ ****************************************************************************/
+
+#ifdef __cplusplus
+#define EXTERN extern "C"
+extern "C"
+{
+#else
+#define EXTERN extern
+#endif
+
+/****************************************************************************
+ * Public Function Prototypes
  ****************************************************************************/
 
 /****************************************************************************
- * Public Symbols
- ****************************************************************************/
-
-	.syntax	unified
-	.thumb
-	.file	"arm_switchcontext.S"
-
-/****************************************************************************
- * Macros
- ****************************************************************************/
-
-/****************************************************************************
- * Public Functions
- ****************************************************************************/
-
-/****************************************************************************
- * Name: arm_switchcontext
+ * Name: board_hall3ph_initialize
  *
  * Description:
- *   Save the current thread context and restore the specified context.
- *   Full prototype is:
+ *   Initialize the 3-phase Hall effect sensor driver for the given timer
  *
- *   void arm_switchcontext(uint32_t *saveregs, uint32_t *restoreregs);
- *
- * Returned Value:
- *   None
+ * Input Parameters:
+ *   devno - The device number, used to build the device path as /dev/hallN
+ *   pha   - phase A Hall effect sensor pin configuration
+ *   phb   - phase B Hall effect sensor pin configuration
+ *   phc   - phase C Hall effect sensor pin configuration
  *
  ****************************************************************************/
 
-	.thumb_func
-	.globl	arm_switchcontext
-	.type	arm_switchcontext, function
-arm_switchcontext:
+int board_hall3ph_initialize(int devno, int pha, int phb, int phc);
 
-	/* Perform the System call with R0=1, R1=saveregs, R2=restoreregs */
+#undef EXTERN
+#ifdef __cplusplus
+}
+#endif
 
-	mov		r2, r1					/* R2: restoreregs */
-	mov		r1, r0					/* R1: saveregs */
-	mov		r0, #SYS_switch_context			/* R0: context switch */
-	svc		#SYS_syscall				/* Force synchronous SVCall (or Hard Fault) */
-
-	/* We will get here only after the rerturn from the context switch */
-
-	bx		lr
-	.size	arm_switchcontext, .-arm_switchcontext
-	.end
+#endif // __BOARD_HALL3PH_H
