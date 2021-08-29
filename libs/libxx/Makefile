@@ -21,7 +21,7 @@ include $(TOPDIR)/Make.defs
 
 CXXSRCS = libxx_cxa_atexit.cxx
 
-ifeq ($(CONFIG_CXX_LIBSUPCXX),y)
+ifeq ($(CONFIG_LIBSUPCXX),y)
 CXXSRCS += libxx_impure.cxx
 else
 CXXSRCS += libxx_eabi_atexit.cxx
@@ -43,6 +43,10 @@ else ifeq ($(CONFIG_LIBCXX),y)
 include libcxx.defs
 else
 include cxx.defs
+endif
+
+ifeq ($(CONFIG_LIBCXXABI),y)
+include libcxxabi.defs
 endif
 
 # Object Files

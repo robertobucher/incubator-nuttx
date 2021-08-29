@@ -37,11 +37,14 @@
 
 #include "sched/sched.h"
 #include "xtensa.h"
+
 #include "hardware/esp32_dport.h"
 #include "hardware/esp32_rtccntl.h"
+
 #include "esp32_region.h"
-#include "esp32_cpuint.h"
+#include "esp32_irq.h"
 #include "esp32_smp.h"
+#include "esp32_gpio.h"
 
 #ifdef CONFIG_SMP
 
@@ -90,14 +93,10 @@ static inline void xtensa_attach_fromcpu0_interrupt(void)
 {
   int cpuint;
 
-  /* Allocate a level-sensitive, priority 1 CPU interrupt for the UART */
-
-  cpuint = esp32_alloc_levelint(1);
-  DEBUGASSERT(cpuint >= 0);
-
   /* Connect all CPU peripheral source to allocated CPU interrupt */
 
-  esp32_attach_peripheral(1, ESP32_PERIPH_CPU_CPU0, cpuint);
+  cpuint = esp32_setup_irq(1, ESP32_PERIPH_CPU_CPU0, 1, ESP32_CPUINT_LEVEL);
+  DEBUGASSERT(cpuint >= 0);
 
   /* Attach the inter-CPU interrupt. */
 
@@ -209,6 +208,12 @@ void xtensa_appcpu_start(void)
   /* Dump registers so that we can see what is going to happen on return */
 
   xtensa_registerdump(tcb);
+
+#ifdef CONFIG_ESP32_GPIO_IRQ
+  /* Initialize GPIO interrupt support */
+
+  esp32_gpioirqinitialize(1);
+#endif
 
 #ifndef CONFIG_SUPPRESS_INTERRUPTS
   /* And Enable interrupts */
